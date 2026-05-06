@@ -1056,9 +1056,9 @@ const S = {
   },
   // Sheets with GS name, custom name, cursor, total
   sheets: [
-    { id: 1, gsName: 'Sheet1',        customName: 'My Sheet 1',        total: 247330, cursor: 38202, fill: '#c6efce',  color: 'var(--amber2)' },
-    { id: 2, gsName: 'LeadList_June', customName: 'Summer Campaign',   total: 251002, cursor: 12002, fill: '#bdd7ee',  color: 'var(--green2)' },
-    { id: 3, gsName: 'Prospects_Q3',  customName: 'Q3 Prospects',      total: 249788, cursor: 2,     fill: '#ffeb9c',  color: 'var(--blue2)' },
+    { id: 0, gsName: '[#1] | Dialer Leads',           customName: 'Dialer Leads',     total: 0, cursor: 0, done: 0, fill: '#c6efce', color: 'var(--amber2)', tag: '[Reg | 24]'       },
+    { id: 1, gsName: '[#2] | Agent Leads',            customName: 'Agent Leads',      total: 0, cursor: 0, done: 0, fill: '#bdd7ee', color: 'var(--green2)', tag: '[Agent | 24]'     },
+    { id: 2, gsName: '[#3] | NE Agent & LifeX Leads', customName: 'NE Agent & LifeX', total: 0, cursor: 0, done: 0, fill: '#ffeb9c', color: 'var(--blue2)',  tag: '[NE Agents | 24]' },
   ],
   // Recurring drips
   recurringDrips: [
@@ -1697,39 +1697,64 @@ function renderTrace() {
 // ═══════════════════════════════════
 // LIVE SIMULATION
 // ═══════════════════════════════════
-const NAMES = ['James Wilson', 'Maria Garcia', 'Robert Johnson', 'Patricia Davis', 'Michael Brown', 'Linda Martinez', 'David Taylor', 'Susan Thomas'];
-const PHONES = ['(813) 555-0142', '(727) 555-0288', '(941) 555-0319', '(863) 555-0447', '(321) 604-1504'];
-const UUID = () => Math.random().toString(16).slice(2, 10);
-let liveSim;
-function startLiveSim() {
-  if (liveSim) return;
-  liveSim = setInterval(() => {
-    if (S.paused) return;
-    const nm = NAMES[Math.random() * NAMES.length | 0];
-    const ph = PHONES[Math.random() * PHONES.length | 0];
-    const e164 = '+1' + ph.replace(/\D/g, '');
-    const r = Math.random();
-    let code, cls, ms = 100 + Math.random() * 280 | 0;
-    if (r > .92) { code = 'FAIL'; cls = 'er'; S.lErr++; S.errCounts.ph++; document.getElementById('ec-ph').textContent = S.errCounts.ph; addLog('er', 'pp-api', 'contact', `FAIL row ${38200 + S.lRow} — ${nm} ${e164} — INVALID_PHONE`, `${ms}ms`); addErrLog('cerr', 'FAIL', `Row ${38200 + S.lRow}: ${nm} — INVALID_PHONE`); }
-    else if (r > .84) { code = '404→LKP'; cls = 'wn'; S.l404++; S.errCounts.e404++; document.getElementById('ec-404').textContent = S.errCounts.e404; addLog('wn', 'pp-api', 'contact', `404 QUIRK row ${38200 + S.lRow} — ${nm} ${e164} — PP saved but returned 404. Wait 2s then GET lookup.`, 'UUID resolved via phone lookup'); addApiTrace('/contacts (POST)', 404, `PP 404 quirk — contact WAS saved\nWaited 2s → GET /contacts?phoneNumber=${e164}&take=1\nVerified phone match → UUID resolved`); }
-    else if (r > .76) { code = '409 DUP'; cls = 'wn'; S.l409++; S.errCounts.e409++; document.getElementById('ec-409c').textContent = S.errCounts.e409; addLog('wn', 'pp-api', 'contact', `409 DUP row ${38200 + S.lRow} — ${nm} — NOT using 409 body UUID. Wait 2s then GET lookup.`); }
-    else { code = '201 OK'; cls = 'ok'; S.lOk++; if (Math.random() > .7) { addApiTrace('/contacts (POST)', 201, `{"phoneNumber":"${e164}","firstName":"${nm.split(' ')[0]}","lastName":"${nm.split(' ')[1] || ''}"}\n→ 201 OK · UUID: ${UUID()}-...\n→ Tag: ${S.selectedTags[0] || 'auto-import'}\n→ Row fill: ${S.fillColor} applied cols A-B`); } }
-    S.lRow++;
-    ['lv-ok', 'lv-err', 'lv-404', 'lv-409'].forEach((id, i) => document.getElementById(id).textContent = [S.lOk, S.lErr, S.l404, S.l409][i].toLocaleString());
-    ['sv-ok', 'sv-409', 'sv-404', 'sv-err'].forEach((id, i) => document.getElementById(id).textContent = [S.lOk, S.l409, S.l404, S.lErr][i].toLocaleString());
-    document.getElementById('sv-ms').textContent = ms;
-    document.getElementById('lv-row').textContent = String(S.lRow % Math.max(1, S.dripBatch)).padStart(4, '0');
-    document.getElementById('lv-dp').style.width = Math.min((S.lRow % (S.dripBatch || 50)) / (S.dripBatch || 50) * 100, 100) + '%';
-    const row = document.createElement('div');
-    row.className = `sr ${cls}`;
-    row.innerHTML = `<span class="sr-rw">#${(38200 + S.lRow).toLocaleString()}</span><span class="sr-tm">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span><span class="sr-nm">${nm}</span><span class="sr-ph">${ph}</span><span class="sr-code ${cls === 'ok' ? 'c201' : cls === 'wn' ? (code.includes('404') ? 'c404' : 'c409') : 'cerr'}">${code}</span><span class="sr-ms">${ms}</span><span class="sr-id">${cls === 'ok' ? UUID() + '…' : '—'}</span>`;
-    const sr = document.getElementById('srows');
-    if (sr) { sr.appendChild(row); sr.scrollTop = sr.scrollHeight; while (sr.children.length > 2 && sr.children.length > 120) sr.removeChild(sr.children[1]); }
-    const tick = document.createElement('div'); tick.className = 'tick';
-    tick.innerHTML = `<span class="tc rw">${38200 + S.lRow}</span><span class="tc ${cls === 'ok' ? 'ok' : cls === 'wn' ? 'wn' : 'er'}">${cls === 'ok' ? '✓' : cls === 'wn' ? '!' : '✗'}</span><span class="tc nm">${nm}</span><span class="tc ph">${ph.replace(/\D/g, '').slice(-7)}</span><span class="tc ${cls === 'ok' ? 'ok' : cls === 'wn' ? 'wn' : 'er'}">${code}</span><span class="tc ms">${ms}ms</span>`;
-    const tk = document.getElementById('ticker');
-    if (tk) { tk.insertBefore(tick, tk.firstChild); while (tk.children.length > 50) tk.removeChild(tk.lastChild); }
-  }, 220);
+
+// === REAL DATA CONNECTIONS ===
+const WEB_APPS = [
+  'https://script.google.com/macros/s/AKfycbx-h5JHlpgjLhSTKVcQkSOZb_DPCXLTEDQCzx6ACtOq05xyABiaDHFNFiH-Jnyxbqpo/exec',
+  'https://script.google.com/macros/s/AKfycbyPQpNQr7BadgleYXWqnlboK_RG0uQ4DOzDutMwauRux2jTd_BJ7ZcVbihbwDqUBe0O/exec',
+  'https://script.google.com/macros/s/AKfycbzoiV1ruoPc3lBM6uJ3HZqbx-DhcFRN9mChYTTRWJF8hjWin5jM2CU4miOQvdBV4D5G5w/exec',
+];
+
+async function fetchAllStatus() {
+  let totalDone = 0;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch(WEB_APPS[i] + '?action=status');
+      const data = await res.json();
+      const sh = data.sheets && data.sheets[i];
+      if (!sh) continue;
+      if (S.sheets[i]) {
+        S.sheets[i].cursor = sh.cursor || 0;
+        S.sheets[i].total  = sh.total  || 0;
+        S.sheets[i].done   = sh.done   || 0;
+        totalDone += sh.done || 0;
+      }
+      if (data.logs && i === 0) {
+        data.logs.slice(0, 10).forEach(lg => {
+          const lvl = lg.level === 'OK' ? 'ok' : lg.level === 'ERROR' ? 'er' : lg.level === 'WARN' ? 'wn' : 'in';
+          addLog(lvl, 'script', S.sheets[i].customName, lg.msg);
+        });
+      }
+    } catch(e) {
+      addLog('er', 'dashboard', 'fetch', 'Sheet ' + (i+1) + ' fetch failed: ' + e.message);
+    }
+  }
+  document.getElementById('d-today').textContent = totalDone.toLocaleString();
+  document.getElementById('d-total').textContent = totalDone.toLocaleString();
+  renderProgressBars && renderProgressBars();
+  renderDashProg && renderDashProg();
+}
+
+async function fetchRealTags() {
+  try {
+    const res = await fetch(WEB_APPS[0] + '?action=tags');
+    const data = await res.json();
+    const tags = data.tags || [];
+    if (tags.length) {
+      S.ppTags = tags.map(t => t.name || t).filter(Boolean);
+      renderPPTagGrid && renderPPTagGrid();
+      populateManualTagSelect && populateManualTagSelect();
+      addLog('ok', 'pp-api', 'tags', S.ppTags.length + ' tags loaded from PitchPrfct');
+    }
+  } catch(e) {
+    addLog('er', 'pp-api', 'tags', 'Tag sync failed: ' + e.message);
+  }
+}
+
+function startRealDataPolling() {
+  fetchAllStatus();
+  fetchRealTags();
+  setInterval(fetchAllStatus, 30000);
 }
 
 function addErrLog(code, lbl, msg) {
@@ -1921,25 +1946,17 @@ function init() {
   renderRecurring();
   renderPPTagGrid();
 
-  // Seed counters
-  let c = 0; const t = setInterval(() => { c += 211; document.getElementById('d-today').textContent = Math.min(c, 8420).toLocaleString(); document.getElementById('d-total').textContent = Math.min(c + 50200 - 8420, 50200).toLocaleString(); if (c >= 8420) clearInterval(t); }, 25);
-  document.getElementById('d-rate').textContent = '96.8%';
-  document.getElementById('d-fail').textContent = '127';
-  document.getElementById('d-runs').textContent = '6';
+  document.getElementById('d-today').textContent = '—';
+  document.getElementById('d-total').textContent = '—';
+  document.getElementById('d-rate').textContent  = '—';
+  document.getElementById('d-fail').textContent  = '0';
+  document.getElementById('d-runs').textContent  = '0';
 
   // Seed activity
-  [['ok', 'Batch complete — <b>My Sheet 1</b> rows 36,201–38,200', 'ok', '2,000 sent'],
-   ['wn', '404 quirk row <b>38,190</b> — waited 2s, GET lookup resolved UUID', 'wn', 'Recovered'],
-   ['er', 'Row <b>37,445</b> skipped — invalid phone "(000) 000-0000"', 'er', 'Skipped'],
-   ['ok', 'Recurring drip fired — <b>My Sheet 1</b> Daily 9:00 AM ET', 'ok', 'Auto'],
-  ].forEach(([t, m, p, l], i) => addActivity(t, m, p, l, new Date(Date.now() - i * 4 * 60000)));
+  addActivity('in', 'Dashboard connected — fetching live data from your Google Sheets…', 'in', 'Live');
 
   // Seed issues
-  S.issues = [
-    { id: 1, type: 'er', title: 'Row 37,445 — Invalid phone', sub: '(000) 000-0000 cannot be normalized to E.164', time: '2:31 PM' },
-    { id: 2, type: 'wn', title: '3 rows skipped — Empty name field', sub: 'My Sheet 1 · Rows 36,800, 36,981, 37,102', time: '2:00 PM' },
-    { id: 3, type: 'er', title: 'API timeout row 38,055', sub: 'POST /contacts timed out after 30s — contact may not have saved', time: '1:44 PM' },
-  ];
+  S.issues = [];
   renderIssues();
 
   // Seed hist
@@ -1982,7 +1999,7 @@ function init() {
 }
 
 init();
-startLiveSim();
+startRealDataPolling();
 </script>
 </body>
 </html>
