@@ -438,7 +438,7 @@ input[type=range]{width:100%;accent-color:var(--amber);cursor:pointer}
       <canvas class="matrix-bg" id="mc"></canvas>
       <div class="stream-over">
         <div class="stream-hd">
-          <div class="stream-title">// LEAD AUTO · LIVE STREAM</div>
+          <div class="stream-title">// LEAD AUTO · MANUAL MODE — RUN IMPORT IN APPS SCRIPT</div>
           <div class="ss-bar">
             <div class="ss"><div class="ss-v g" id="sv-ok">0</div><div class="ss-l">201 OK</div></div>
             <div class="ss"><div class="ss-v b" id="sv-409">0</div><div class="ss-l">409 DUP</div></div>
@@ -1752,9 +1752,11 @@ async function fetchRealTags() {
 }
 
 function startRealDataPolling() {
-  fetchAllStatus();
-  fetchRealTags();
-  setInterval(fetchAllStatus, 30000);
+  // Option 1: Manual mode - no auto polling
+  // Run checkProgress() in Apps Script to see real status
+  addLog('in', 'dashboard', 'mode', 'Manual mode — run runImport() in Apps Script to upload leads');
+  addLog('in', 'dashboard', 'mode', 'Run checkProgress() in Apps Script to check real row counts');
+  addLog('in', 'dashboard', 'mode', 'Dashboard shows configuration — Apps Script execution log shows live upload status');
 }
 
 function addErrLog(code, lbl, msg) {
@@ -1946,14 +1948,16 @@ function init() {
   renderRecurring();
   renderPPTagGrid();
 
-  document.getElementById('d-today').textContent = '—';
-  document.getElementById('d-total').textContent = '—';
+  document.getElementById('d-today').textContent = 'Run script';
+  document.getElementById('d-total').textContent = 'to see data';
   document.getElementById('d-rate').textContent  = '—';
   document.getElementById('d-fail').textContent  = '0';
   document.getElementById('d-runs').textContent  = '0';
 
   // Seed activity
-  addActivity('in', 'Dashboard connected — fetching live data from your Google Sheets…', 'in', 'Live');
+  addActivity('in', 'Dashboard ready — go to Apps Script and run <b>runImport()</b> to start uploading', 'in', 'Ready');
+  addActivity('in', 'After running, check <b>Execution log</b> in Apps Script for live upload status', 'in', 'Info');
+  addActivity('in', 'Run <b>checkProgress()</b> in Apps Script to see row counts for all 3 sheets', 'in', 'Info');
 
   // Seed issues
   S.issues = [];
@@ -1976,7 +1980,13 @@ function init() {
   }
 
   // Console seed
-  addLog('sys', 'sys', 'boot', 'Lead Auto v5 initialized');
+  addLog('sys', 'sys', 'boot', 'Lead Auto v5 initialized — Manual Mode');
+  addLog('in', 'sys', 'sheets', 'Sheet 1: [#1] | Dialer Leads → tag: [Reg | 24]');
+  addLog('in', 'sys', 'sheets', 'Sheet 2: [#2] | Agent Leads → tag: [Agent | 24]');
+  addLog('in', 'sys', 'sheets', 'Sheet 3: [#3] | NE Agent & LifeX Leads → tag: [NE Agents | 24]');
+  addLog('in', 'sys', 'howto', 'To upload: open Google Sheet → Extensions → Apps Script → Run → runImport');
+  addLog('in', 'sys', 'howto', 'To check progress: run checkProgress() in Apps Script');
+  addLog('in', 'sys', 'howto', 'To reset a sheet cursor: run resetImport() in Apps Script');
   addLog('in', 'pp-api', 'quirk', 'PP API: 404 → wait 2s → GET /contacts?phoneNumber=…&take=1 → verify phone match before using UUID');
   addLog('in', 'pp-api', 'quirk', 'PP API: 409 → do NOT use 409 body UUID (unreliable) → wait 2s → fresh GET lookup');
   addLog('ok', 'drip', 'recurring', `2 recurring drips active: "Daily — My Sheet 1" (9:00 AM ET), "Weekdays — Q3 Prospects" (10:30 AM ET)`);
