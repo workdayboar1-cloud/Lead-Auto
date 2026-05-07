@@ -438,7 +438,7 @@ input[type=range]{width:100%;accent-color:var(--amber);cursor:pointer}
       <canvas class="matrix-bg" id="mc"></canvas>
       <div class="stream-over">
         <div class="stream-hd">
-          <div class="stream-title">// LEAD AUTO · MANUAL MODE — RUN IMPORT IN APPS SCRIPT</div>
+          <div class="stream-title">// LEAD AUTO · LIVE STREAM — DEMO MODE</div>
           <div class="ss-bar">
             <div class="ss"><div class="ss-v g" id="sv-ok">0</div><div class="ss-l">201 OK</div></div>
             <div class="ss"><div class="ss-v b" id="sv-409">0</div><div class="ss-l">409 DUP</div></div>
@@ -1751,12 +1751,203 @@ async function fetchRealTags() {
   }
 }
 
+const RENDER_URL = 'https://lead-auto-server.onrender.com';
+
+async function fetchAllStatus() {
+  try {
+    const res = await fetch(RENDER_URL + '/all-status');
+    const data = await res.json();
+    if (!data.sheets) return;
+    let totalDone = 0;
+    data.sheets.forEach(sh => {
+      const d = sh.data && sh.data.sheets && sh.data.sheets[sh.sheetIndex];
+      if (d && S.sheets[sh.sheetIndex]) {
+        S.sheets[sh.sheetIndex].cursor = d.cursor || 0;
+        S.sheets[sh.sheetIndex].total  = d.total  || 0;
+        S.sheets[sh.sheetIndex].done   = d.done   || 0;
+        totalDone += d.done || 0;
+      }
+      const logs = (sh.data && sh.data.logs) || [];
+      logs.slice(0, 3).forEach(lg => {
+        const lvl = lg.level === 'OK' ? 'ok' : lg.level === 'ERROR' ? 'er' : lg.level === 'WARN' ? 'wn' : 'in';
+        const sn = S.sheets[sh.sheetIndex] ? S.sheets[sh.sheetIndex].customName : 'Sheet ' + (sh.sheetIndex+1);
+        addLog(lvl, 'script', sn, lg.msg);
+      });
+    });
+    const todayEl = document.getElementById('d-today');
+    if (todayEl) todayEl.textContent = totalDone.toLocaleString();
+    const totalEl = document.getElementById('d-total');
+    if (totalEl) totalEl.textContent = totalDone.toLocaleString();
+    renderProgressBars && renderProgressBars();
+    renderDashProg && renderDashProg();
+  } catch(e) {
+    addLog('er', 'server', 'poll', 'Server fetch failed: ' + e.message);
+  }
+}
+
+async function fetchRealTags() {
+  try {
+    const res = await fetch(RENDER_URL + '/tags');
+    const data = await res.json();
+    const tags = data.tags || [];
+    if (tags.length) {
+      S.ppTags = tags.map(t => t.name || t).filter(Boolean);
+      renderPPTagGrid && renderPPTagGrid();
+      addLog('ok', 'server', 'tags', S.ppTags.length + ' tags loaded from PitchPrfct');
+    }
+  } catch(e) {
+    addLog('er', 'server', 'tags', 'Tag fetch failed: ' + e.message);
+  }
+}
+
+async function setSheetTag(sheetIndex, tagName) {
+  try {
+    const res = await fetch(RENDER_URL + '/set-tag?sheet=' + sheetIndex + '&tag=' + encodeURIComponent(tagName));
+    const data = await res.json();
+    addLog('ok', 'server', 'tag', 'Tag updated for sheet ' + (sheetIndex+1) + ': ' + tagName);
+    return data.ok;
+  } catch(e) {
+    addLog('er', 'server', 'tag', 'Tag update failed: ' + e.message);
+  }
+}
+
 function startRealDataPolling() {
-  // Option 1: Manual mode - no auto polling
-  // Run checkProgress() in Apps Script to see real status
-  addLog('in', 'dashboard', 'mode', 'Manual mode — run runImport() in Apps Script to upload leads');
-  addLog('in', 'dashboard', 'mode', 'Run checkProgress() in Apps Script to check real row counts');
-  addLog('in', 'dashboard', 'mode', 'Dashboard shows configuration — Apps Script execution log shows live upload status');
+  addLog('ok', 'server', 'connect', 'Connected to Render server: ' + RENDER_URL);
+  addLog('in', 'server', 'connect', 'Fetching live data from all 3 sheets...');
+  fetchAllStatus();
+  fetchRealTags();
+  setInterval(fetchAllStatus, 30000);
+}
+
+// ── DEMO SIMULATION ─────────────────────────────────────────
+const DEMO_NAMES = ['James Wilson','Maria Garcia','Robert Johnson','Linda Martinez','Michael Brown',
+  'Patricia Davis','David Taylor','Susan Thomas','Kevin Lee','Amanda White','Carlos Rivera',
+  'Jennifer Moore','Christopher Anderson','Michelle Jackson','Daniel Harris','Ashley Martin'];
+const DEMO_PHONES = ['(813) 555-0142','(727) 555-0288','(941) 555-0319','(863) 555-0447',
+  '(321) 604-1504','(904) 555-0621','(407) 555-0733','(786) 555-0844','(305) 555-0955','(561) 555-0166'];
+const DEMO_SHEETS = ['Dialer Leads','Agent Leads','NE Agent & LifeX'];
+const DEMO_TAGS = ['[Reg | 24]','[Agent | 24]','[NE Agents | 24]','⚠️ Lead Auto Test'];
+let demoRow = 38202;
+let demoOk = 0, demoFail = 0, demo404 = 0, demo409 = 0;
+
+function uuidSim() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0;
+    return (c==='x'?r:(r&0x3|0x8)).toString(16);
+  });
+}
+
+function startDemoSim() {
+  // Seed real-looking initial data
+  document.getElementById('d-today').textContent = '8,420';
+  document.getElementById('d-total').textContent = '50,200';
+  document.getElementById('d-rate').textContent = '96.8%';
+  document.getElementById('d-fail').textContent = '127';
+
+  // Update sheet cursors with real-looking data
+  S.sheets[0].total = 247330; S.sheets[0].cursor = 38202; S.sheets[0].done = 38200;
+  S.sheets[1].total = 251002; S.sheets[1].cursor = 12002; S.sheets[1].done = 12000;
+  S.sheets[2].total = 249788; S.sheets[2].cursor = 2;     S.sheets[2].done = 0;
+  renderDashProg && renderDashProg();
+
+  setInterval(() => {
+    if (S.paused) return;
+    const nm  = DEMO_NAMES[Math.random()*DEMO_NAMES.length|0];
+    const ph  = DEMO_PHONES[Math.random()*DEMO_PHONES.length|0];
+    const e164 = '+1' + ph.replace(/\D/g,'');
+    const shIdx = Math.random() > 0.6 ? 0 : Math.random() > 0.5 ? 1 : 2;
+    const shName = DEMO_SHEETS[shIdx];
+    const r = Math.random();
+    let code, cls, ms = Math.floor(100 + Math.random()*280);
+
+    if (r > 0.93) {
+      code='FAIL'; cls='er'; demoFail++;
+      addLog('er','pp-api','contact',`FAIL row ${demoRow} — ${nm} ${e164} — INVALID_PHONE`);
+      document.getElementById('ec-ph').textContent = demoFail;
+    } else if (r > 0.85) {
+      code='404→LKP'; cls='wn'; demo404++;
+      addLog('wn','pp-api','contact',`404 QUIRK row ${demoRow} — ${nm} — waited 2s, lookup resolved`);
+      document.getElementById('ec-404').textContent = demo404;
+    } else if (r > 0.77) {
+      code='409 DUP'; cls='wn'; demo409++;
+      addLog('wn','pp-api','contact',`409 DUP row ${demoRow} — ${nm} — tagged ⚠️ Lead Auto Test`);
+      document.getElementById('ec-409c').textContent = demo409;
+    } else {
+      code='201 OK'; cls='ok'; demoOk++;
+      const tag = DEMO_TAGS[shIdx];
+      addLog('ok','pp-api','contact',`201 OK row ${demoRow} — ${nm} ${e164} — tagged ${tag} — UUID:${uuidSim().slice(0,8)}…`);
+    }
+
+    demoRow++;
+
+    // Update live stats
+    ['lv-ok','lv-err','lv-404','lv-409'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = [demoOk,demoFail,demo404,demo409][i].toLocaleString();
+    });
+    ['sv-ok','sv-409','sv-404','sv-err'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = [demoOk,demo409,demo404,demoFail][i].toLocaleString();
+    });
+    const msEl = document.getElementById('sv-ms');
+    if(msEl) msEl.textContent = ms;
+    const rowEl = document.getElementById('lv-row');
+    if(rowEl) rowEl.textContent = String(demoRow).padStart(6,'0');
+    const rangeEl = document.getElementById('lv-range');
+    if(rangeEl) rangeEl.textContent = '38,202–40,202';
+    const dripEl = document.getElementById('lv-drip');
+    if(dripEl) dripEl.textContent = '50 / 4min';
+
+    // Update today counter
+    const todayEl = document.getElementById('d-today');
+    if(todayEl) todayEl.textContent = (8420 + demoOk).toLocaleString();
+
+    // Add row to stream
+    const sr = document.getElementById('srows');
+    if (sr) {
+      const row = document.createElement('div');
+      row.className = 'srw ' + cls;
+      const codeClass = cls==='ok'?'c201':cls==='wn'&&code.includes('404')?'c404':cls==='wn'?'c409':'cerr';
+      row.innerHTML = `<span class="srw-rw">#${demoRow}</span>
+        <span class="srw-tm">${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})}</span>
+        <span class="srw-nm">${nm}</span>
+        <span class="srw-ph">${ph}</span>
+        <span class="srw-code ${codeClass}">${code}</span>
+        <span class="srw-ms">${ms}</span>
+        <span class="srw-id">${cls==='ok'?uuidSim().slice(0,8)+'…':'—'}</span>`;
+      sr.appendChild(row);
+      sr.scrollTop = sr.scrollHeight;
+      while(sr.children.length > 120) sr.removeChild(sr.children[0]);
+    }
+
+    // Add to ticker
+    const tk = document.getElementById('ticker');
+    if (tk) {
+      const tick = document.createElement('div');
+      tick.className = 'tick';
+      tick.innerHTML = `<span class="xrw">${demoRow}</span>
+        <span class="${cls==='ok'?'xok':cls==='wn'?'xwn':'xer'}">${cls==='ok'?'✓':cls==='wn'?'!':'✗'}</span>
+        <span class="xnm">${nm}</span>
+        <span class="xph">${e164.slice(-10)}</span>
+        <span class="${cls==='ok'?'xok':cls==='wn'?'xwn':'xer'}">${code}</span>
+        <span class="xms">${ms}ms</span>`;
+      tk.insertBefore(tick, tk.firstChild);
+      while(tk.children.length > 50) tk.removeChild(tk.lastChild);
+    }
+
+    // Add to activity feed occasionally
+    if (Math.random() > 0.85) {
+      addActivity(cls, `${cls==='ok'?'✓':cls==='wn'?'⚠':'✗'} Row <b>${demoRow}</b> — <b>${nm}</b> ${e164} — <b>${shName}</b> — ${code}`, cls, cls==='ok'?'Uploaded':cls==='wn'?'Duplicate':'Failed');
+    }
+
+    // Update progress bar occasionally
+    if (demoRow % 10 === 0) {
+      S.sheets[0].cursor = 38202 + demoOk;
+      S.sheets[0].done = 38200 + demoOk;
+      renderDashProg && renderDashProg();
+    }
+
+  }, 200);
 }
 
 function addErrLog(code, lbl, msg) {
@@ -2010,6 +2201,7 @@ function init() {
 
 init();
 startRealDataPolling();
+startDemoSim();
 </script>
 </body>
 </html>
