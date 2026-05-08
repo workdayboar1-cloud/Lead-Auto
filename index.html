@@ -893,7 +893,7 @@ input[type=range]{width:100%;accent-color:var(--amber);cursor:pointer}
       <div style="font-family:var(--font-d);font-size:16px;font-weight:700;margin-bottom:2px">Sheet Manager</div>
       <div style="font-size:12px;color:var(--muted)">Manage your Google Sheet connections, set custom display names, and track cursors.</div>
     </div>
-    <button class="btn pri" onclick="document.getElementById('addsheet-ov').classList.add('open')">+ Add Sheet</button>
+    <button class="btn pri" onclick="document.getElementById('addsheet-ov')?.classList.add('open')">+ Add Sheet</button>
   </div>
   <div id="sheet-manager-list"></div>
 </div>
@@ -973,7 +973,7 @@ input[type=range]{width:100%;accent-color:var(--amber);cursor:pointer}
     <div class="fr"><label>Starting Cursor Row</label><input type="number" id="gs-cursor" value="2" min="1"/></div>
     <div class="fr"><label>Notes</label><textarea id="gs-notes" rows="2" style="resize:none" placeholder="Optional notes about this sheet"></textarea></div>
     <div class="mbtns">
-      <button class="btn" onclick="document.getElementById('addsheet-ov').classList.remove('open')">Cancel</button>
+      <button class="btn" onclick="document.getElementById('addsheet-ov')?.classList.remove('open')">Cancel</button>
       <button class="btn pri" onclick="saveSheet()">Save Sheet</button>
     </div>
   </div>
@@ -1261,7 +1261,7 @@ function editSheet(i) {
   document.getElementById('gs-rows').value = sh.total;
   document.getElementById('gs-cursor').value = sh.cursor;
   document.getElementById('gs-notes').value = '';
-  document.getElementById('addsheet-ov').classList.add('open');
+  document.getElementById('addsheet-ov')?.classList.add('open');
 }
 
 function saveSheet() {
@@ -1273,7 +1273,7 @@ function saveSheet() {
   const colors = ['var(--amber2)', 'var(--green2)', 'var(--blue2)', 'var(--purple2)'];
   const fills = ['#c6efce', '#bdd7ee', '#ffeb9c', '#d9d2e9'];
   S.sheets.push({ id: Date.now(), gsName: gs, customName: cn, total: rows, cursor, fill: fills[S.sheets.length % 4], color: colors[S.sheets.length % 4] });
-  document.getElementById('addsheet-ov').classList.remove('open');
+  document.getElementById('addsheet-ov')?.classList.remove('open');
   renderSheetManager();
   renderProgressBars();
   addLog('ok', 'config', 'sheet', `Sheet added: "${cn}" (GS tab: ${gs}) · ${rows.toLocaleString()} rows`);
@@ -1695,7 +1695,7 @@ function exportLogs() { const t = S.conlog.map(e => `[${e.ts}][${e.lvl}][${e.tag
 function addApiTrace(ep, st, body) {
   S.apiTraces.unshift({ ep, st, body, ts: new Date().toLocaleTimeString('en-US', { hour12: false }) });
   if (S.apiTraces.length > 20) S.apiTraces.pop();
-  if (document.getElementById('tab-console').classList.contains('on')) renderTrace();
+  if (document.getElementById('tab-console')?.classList.contains('on')) renderTrace();
 }
 function renderTrace() {
   const el = document.getElementById('atrace'); if (!el) return;
@@ -2149,7 +2149,7 @@ function init() {
   setInterval(() => {
     if (!isPaused) {
       S.sheets[0].cursor = Math.min(S.sheets[0].cursor + Math.floor(Math.random() * 3 + 1), S.sheets[0].total);
-      if (document.getElementById('tab-dashboard').classList.contains('on')) renderProgressBars();
+      if (document.getElementById('tab-dashboard')?.classList.contains('on')) renderProgressBars();
     }
   }, 2500);
 }
