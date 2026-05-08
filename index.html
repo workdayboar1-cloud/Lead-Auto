@@ -1768,33 +1768,60 @@ const WEB_APPS = [
 
 async function fetchAllStatus() {
   let totalDone = 0;
-  for (let i = 0; i < 3; i++) {
-    try {
-      const res = await fetch(WEB_APPS[i] + '?action=status');
-      const data = await res.json();
-      const sh = data.sheets && data.sheets[i];
-      if (!sh) continue;
-      if (S.sheets[i]) {
-        S.sheets[i].cursor = sh.cursor || 0;
-        S.sheets[i].total  = sh.total  || 0;
-        S.sheets[i].done   = sh.done   || 0;
-        totalDone += sh.done || 0;
+  let anyRunning = false;
+
+  try {
+    const res  = await fetch(RENDER_URL + '/all-status');
+    const data = await res.json();
+    if (!data.sheets) return;
+
+    data.sheets.forEach(sh => {
+      const d = sh.data && sh.data.sheets && sh.data.sheets[sh.sheetIndex];
+      if (d && S.sheets[sh.sheetIndex]) {
+        S.sheets[sh.sheetIndex].cursor    = d.cursor    || 0;
+        S.sheets[sh.sheetIndex].total     = d.total     || 0;
+        S.sheets[sh.sheetIndex].done      = d.done      || 0;
+        S.sheets[sh.sheetIndex].activeTag = d.activeTag || S.sheets[sh.sheetIndex].activeTag;
+        S.sheets[sh.sheetIndex].status    = d.status    || 'idle';
+        totalDone += d.done || 0;
+        if (d.status === 'running') anyRunning = true;
       }
-      if (data.logs && i === 0) {
-        data.logs.slice(0, 10).forEach(lg => {
-          const lvl = lg.level === 'OK' ? 'ok' : lg.level === 'ERROR' ? 'er' : lg.level === 'WARN' ? 'wn' : 'in';
-          addLog(lvl, 'script', S.sheets[i].customName, lg.msg);
-        });
-      }
-    } catch(e) {
-      addLog('er', 'dashboard', 'fetch', 'Sheet ' + (i+1) + ' fetch failed: ' + e.message);
-    }
+
+      // Only show logs from the last 5 minutes — no old log replay
+      const logs = (sh.data && sh.data.logs) || [];
+      const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+      logs.forEach(lg => {
+        const logTime = new Date(lg.ts).getTime();
+        if (logTime < fiveMinAgo) return; // skip old logs
+        const key = lg.ts + '|' + lg.msg;
+        if (S._seenLogs && S._seenLogs.has(key)) return; // skip already shown
+        if (!S._seenLogs) S._seenLogs = new Set();
+        S._seenLogs.add(key);
+        const lvl = lg.level === 'OK' ? 'ok' : lg.level === 'ERROR' ? 'er' : lg.level === 'WARN' ? 'wn' : 'in';
+        const sn  = S.sheets[sh.sheetIndex] ? S.sheets[sh.sheetIndex].customName : 'Sheet ' + (sh.sheetIndex + 1);
+        const ts  = new Date(lg.ts).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+        addLog(lvl, sn, ts, lg.msg);
+      });
+    });
+  } catch(e) {
+    addLog('er', 'server', 'poll', 'Server fetch failed: ' + e.message);
   }
-  document.getElementById('d-today').textContent = totalDone.toLocaleString();
-  document.getElementById('d-total').textContent = totalDone.toLocaleString();
-  typeof renderProgressBars === "function" && renderProgressBars();
-  typeof renderDashProg === "function" && typeof renderDashProg === "function" && renderDashProg();
+
+  // Update status chip
+  const chip = document.getElementById('rchip');
+  if (chip) {
+    if (anyRunning) { chip.textContent = '● RUNNING'; chip.className = 'chip g'; }
+    else { chip.textContent = '⏸ IDLE'; chip.className = 'chip n'; }
+  }
+
+  const todayEl = document.getElementById('d-today');
+  if (todayEl) todayEl.textContent = totalDone.toLocaleString();
+  const totalEl = document.getElementById('d-total');
+  if (totalEl) totalEl.textContent = totalDone.toLocaleString();
+  typeof renderProgressBars === 'function' && renderProgressBars();
+  typeof renderDashProg === 'function' && renderDashProg();
 }
+
 
 async function fetchRealTags() {
   try {
