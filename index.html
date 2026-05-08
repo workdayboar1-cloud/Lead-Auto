@@ -369,10 +369,16 @@ input[type=range]{width:100%;accent-color:var(--amber);cursor:pointer}
 <div class="main">
   <div class="topbar">
     <div class="tl"><span class="ptitle" id="ptitle">Dashboard</span><span class="chip g" id="rchip">● RUNNING</span></div>
-    <div class="tr">
-      <button class="btn sm" onclick="doRef()">↻</button>
-      <button class="btn dng sm" onclick="togPause()" id="pbtn">⏸ Pause</button>
-      <button class="btn pri sm" onclick="go('manual',document.querySelector('.ni:nth-child(8)'))">⚡ Manual Upload</button>
+    <div class="tr" style="gap:8px">
+      <select id="active-sheet-sel" onchange="setActiveSheet(this.value)" style="background:var(--bg3);border:1px solid var(--bd2);color:var(--text2);font-family:var(--fn);font-size:11px;padding:5px 8px;border-radius:5px;outline:none">
+        <option value="0">Dialer Leads</option>
+        <option value="1">Agent Leads</option>
+        <option value="2">NE Agent &amp; LifeX</option>
+      </select>
+      <button class="btn sm" onclick="doRefresh()" title="Refresh status">↻ Refresh</button>
+      <button class="btn suc sm" onclick="sendCommand('run')" id="run-btn">▶ Run</button>
+      <button class="btn dng sm" onclick="sendCommand('pause')" id="pause-btn">⏸ Pause</button>
+      <button class="btn sm" onclick="sendCommand('reset')" id="reset-btn" title="Reset cursor to row 1">↺ Reset</button>
     </div>
   </div>
 
@@ -2197,6 +2203,51 @@ function init() {
       if (document.getElementById('tab-dashboard').classList.contains('on')) renderProgressBars();
     }
   }, 2500);
+}
+
+// ── DASHBOARD CONTROL FUNCTIONS ─────────────────────────────
+
+let activeSheetIdx = 0;
+
+function setActiveSheet(idx) {
+  activeSheetIdx = parseInt(idx);
+  addLog('in', 'dashboard', 'sheet', 'Active sheet set to: ' + ['Dialer Leads', 'Agent Leads', 'NE Agent & LifeX'][activeSheetIdx]);
+}
+
+async function sendCommand(cmd) {
+  const sheetNames = ['Dialer Leads', 'Agent Leads', 'NE Agent & LifeX'];
+  const btnMap = { run: 'run-btn', pause: 'pause-btn', reset: 'reset-btn' };
+  const btn = document.getElementById(btnMap[cmd]);
+
+  // Visual feedback
+  if (btn) { const orig = btn.textContent; btn.textContent = '...'; btn.disabled = true; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000); }
+
+  try {
+    addLog('in', 'dashboard', 'command', 'Sending ' + cmd.toUpperCase() + ' to ' + sheetNames[activeSheetIdx] + '...');
+    const res  = await fetch(RENDER_URL + '/command?sheet=' + activeSheetIdx + '&cmd=' + cmd);
+    const data = await res.json();
+    if (data.ok) {
+      addLog('ok', 'dashboard', 'command', cmd.toUpperCase() + ' sent to ' + sheetNames[activeSheetIdx] + ' — will execute within 1 minute');
+      addActivity('ok', '<b>' + cmd.toUpperCase() + '</b> command sent to <b>' + sheetNames[activeSheetIdx] + '</b> — script will ' + (cmd === 'run' ? 'start uploading' : cmd === 'pause' ? 'pause at next checkpoint' : 'reset cursor to row 1'), 'ok', cmd.charAt(0).toUpperCase() + cmd.slice(1));
+      // Update chip
+      const chip = document.getElementById('rchip');
+      if (chip) {
+        if (cmd === 'run') { chip.textContent = '● RUNNING'; chip.className = 'chip g'; }
+        else if (cmd === 'pause') { chip.textContent = '⏸ PAUSED'; chip.className = 'chip a'; }
+        else if (cmd === 'reset') { chip.textContent = '↺ RESET'; chip.className = 'chip b'; }
+      }
+    } else {
+      addLog('er', 'dashboard', 'command', 'Command failed: ' + (data.error || 'unknown error'));
+    }
+  } catch(e) {
+    addLog('er', 'dashboard', 'command', 'Command failed: ' + e.message);
+  }
+}
+
+async function doRefresh() {
+  addLog('in', 'dashboard', 'refresh', 'Refreshing status from all 3 sheets...');
+  await fetchAllStatus();
+  addLog('ok', 'dashboard', 'refresh', 'Status refreshed');
 }
 
 function renderDashProg() {
