@@ -1729,25 +1729,21 @@ async function fetchAllStatus() {
     data.sheets.forEach(sh => {
       const idx = sh.sheetIndex;
       if (!S.sheets[idx]) return;
-      
-      // The Apps Script returns all 3 sheet configs but only knows the total
-      // for sheets that are open in that spreadsheet
       const sheetData = sh.data && sh.data.sheets;
       if (!sheetData) return;
 
-      // Find the entry with a non-zero total that matches this script's active sheet
-      const activeIdx = sh.data.activeSheet;
-      const d = sheetData[activeIdx] || sheetData.find(s => s && s.total > 0);
-      
-      if (d && d.total > 0) {
-        S.sheets[idx].cursor    = d.cursor    || 0;
-        S.sheets[idx].total     = d.total     || 0;
-        S.sheets[idx].done      = d.done      || 0;
-        S.sheets[idx].activeTag = d.activeTag || S.sheets[idx].activeTag;
-        S.sheets[idx].status    = d.status    || 'idle';
-        totalDone += d.done || 0;
-        if (d.status === 'running') anyRunning = true;
-      }
+      // Each Apps Script knows its own sheet — find entry with matching index AND has total > 0
+      let d = sheetData[idx];
+      if (!d || !d.total) d = sheetData.find(s => s && s.total > 0);
+      if (!d || !d.total) return;
+
+      S.sheets[idx].cursor    = d.cursor    || 0;
+      S.sheets[idx].total     = d.total     || 0;
+      S.sheets[idx].done      = d.done      || 0;
+      S.sheets[idx].activeTag = d.activeTag || S.sheets[idx].activeTag;
+      S.sheets[idx].status    = d.status    || 'idle';
+      totalDone += d.done || 0;
+      if (d.status === 'running') anyRunning = true;
 
       // Only show NEW logs from last 5 minutes
       const logs = (sh.data && sh.data.logs) || [];
