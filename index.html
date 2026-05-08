@@ -1760,6 +1760,7 @@ function renderTrace() {
 // ═══════════════════════════════════
 
 // === REAL DATA CONNECTIONS ===
+const RENDER_URL = 'https://lead-auto-server.onrender.com';
 const WEB_APPS = [
   'https://script.google.com/macros/s/AKfycbx-h5JHlpgjLhSTKVcQkSOZb_DPCXLTEDQCzx6ACtOq05xyABiaDHFNFiH-Jnyxbqpo/exec',
   'https://script.google.com/macros/s/AKfycbyPQpNQr7BadgleYXWqnlboK_RG0uQ4DOzDutMwauRux2jTd_BJ7ZcVbihbwDqUBe0O/exec',
@@ -1825,21 +1826,19 @@ async function fetchAllStatus() {
 
 async function fetchRealTags() {
   try {
-    const res = await fetch(WEB_APPS[0] + '?action=tags');
+    const res = await fetch(RENDER_URL + '/tags');
     const data = await res.json();
     const tags = data.tags || [];
     if (tags.length) {
       S.ppTags = tags.map(t => t.name || t).filter(Boolean);
-      renderPPTagGrid && renderPPTagGrid();
-      populateManualTagSelect && populateManualTagSelect();
+      typeof renderPPTagGrid === 'function' && renderPPTagGrid();
+      typeof populateManualTagSelect === 'function' && populateManualTagSelect();
       addLog('ok', 'pp-api', 'tags', S.ppTags.length + ' tags loaded from PitchPrfct');
     }
   } catch(e) {
-    addLog('er', 'pp-api', 'tags', 'Tag sync failed: ' + e.message);
+    addLog('er', 'pp-api', 'tags', 'Tag fetch failed: ' + e.message);
   }
 }
-
-const RENDER_URL = 'https://lead-auto-server.onrender.com';
 
 async function fetchAllStatus() {
   try {
@@ -1907,145 +1906,6 @@ function startRealDataPolling() {
   setInterval(fetchAllStatus, 30000);
 }
 
-// ── DEMO SIMULATION ─────────────────────────────────────────
-const DEMO_NAMES = ['James Wilson','Maria Garcia','Robert Johnson','Linda Martinez','Michael Brown',
-  'Patricia Davis','David Taylor','Susan Thomas','Kevin Lee','Amanda White','Carlos Rivera',
-  'Jennifer Moore','Christopher Anderson','Michelle Jackson','Daniel Harris','Ashley Martin'];
-const DEMO_PHONES = ['(813) 555-0142','(727) 555-0288','(941) 555-0319','(863) 555-0447',
-  '(321) 604-1504','(904) 555-0621','(407) 555-0733','(786) 555-0844','(305) 555-0955','(561) 555-0166'];
-const DEMO_SHEETS = ['Dialer Leads','Agent Leads','NE Agent & LifeX'];
-const DEMO_TAGS = ['[Reg | 24]','[Agent | 24]','[NE Agents | 24]','⚠️ Lead Auto Test'];
-let demoRow = 38202;
-let demoOk = 0, demoFail = 0, demo404 = 0, demo409 = 0;
-
-function uuidSim() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx'.replace(/[xy]/g, c => {
-    const r = Math.random()*16|0;
-    return (c==='x'?r:(r&0x3|0x8)).toString(16);
-  });
-}
-
-function startDemoSim() {
-  // Seed real-looking initial data
-  document.getElementById('d-today').textContent = '8,420';
-  document.getElementById('d-total').textContent = '50,200';
-  document.getElementById('d-rate').textContent = '96.8%';
-  document.getElementById('d-fail').textContent = '127';
-
-  // Update sheet cursors with real-looking data
-  S.sheets[0].total = 247330; S.sheets[0].cursor = 38202; S.sheets[0].done = 38200;
-  S.sheets[1].total = 251002; S.sheets[1].cursor = 12002; S.sheets[1].done = 12000;
-  S.sheets[2].total = 249788; S.sheets[2].cursor = 2;     S.sheets[2].done = 0;
-  typeof renderDashProg === "function" && typeof renderDashProg === "function" && renderDashProg();
-
-  setInterval(() => {
-    if (S.paused) return;
-    const nm  = DEMO_NAMES[Math.random()*DEMO_NAMES.length|0];
-    const ph  = DEMO_PHONES[Math.random()*DEMO_PHONES.length|0];
-    const e164 = '+1' + ph.replace(/\D/g,'');
-    const shIdx = Math.random() > 0.6 ? 0 : Math.random() > 0.5 ? 1 : 2;
-    const shName = DEMO_SHEETS[shIdx];
-    const r = Math.random();
-    let code, cls, ms = Math.floor(100 + Math.random()*280);
-
-    if (r > 0.93) {
-      code='FAIL'; cls='er'; demoFail++;
-      addLog('er','pp-api','contact',`FAIL row ${demoRow} — ${nm} ${e164} — INVALID_PHONE`);
-      document.getElementById('ec-ph').textContent = demoFail;
-    } else if (r > 0.85) {
-      code='404→LKP'; cls='wn'; demo404++;
-      addLog('wn','pp-api','contact',`404 QUIRK row ${demoRow} — ${nm} — waited 2s, lookup resolved`);
-      document.getElementById('ec-404').textContent = demo404;
-    } else if (r > 0.77) {
-      code='409 DUP'; cls='wn'; demo409++;
-      addLog('wn','pp-api','contact',`409 DUP row ${demoRow} — ${nm} — tagged ⚠️ Lead Auto Test`);
-      document.getElementById('ec-409c').textContent = demo409;
-    } else {
-      code='201 OK'; cls='ok'; demoOk++;
-      const tag = DEMO_TAGS[shIdx];
-      addLog('ok','pp-api','contact',`201 OK row ${demoRow} — ${nm} ${e164} — tagged ${tag} — UUID:${uuidSim().slice(0,8)}…`);
-    }
-
-    demoRow++;
-
-    // Update live stats
-    ['lv-ok','lv-err','lv-404','lv-409'].forEach((id,i) => {
-      const el = document.getElementById(id);
-      if(el) el.textContent = [demoOk,demoFail,demo404,demo409][i].toLocaleString();
-    });
-    ['sv-ok','sv-409','sv-404','sv-err'].forEach((id,i) => {
-      const el = document.getElementById(id);
-      if(el) el.textContent = [demoOk,demo409,demo404,demoFail][i].toLocaleString();
-    });
-    const msEl = document.getElementById('sv-ms');
-    if(msEl) msEl.textContent = ms;
-    const rowEl = document.getElementById('lv-row');
-    if(rowEl) rowEl.textContent = String(demoRow).padStart(6,'0');
-    const rangeEl = document.getElementById('lv-range');
-    if(rangeEl) rangeEl.textContent = '38,202–40,202';
-    const dripEl = document.getElementById('lv-drip');
-    if(dripEl) dripEl.textContent = '50 / 4min';
-
-    // Update today counter
-    const todayEl = document.getElementById('d-today');
-    if(todayEl) todayEl.textContent = (8420 + demoOk).toLocaleString();
-
-    // Add row to stream
-    const sr = document.getElementById('srows');
-    if (sr) {
-      const row = document.createElement('div');
-      row.className = 'srw ' + cls;
-      const codeClass = cls==='ok'?'c201':cls==='wn'&&code.includes('404')?'c404':cls==='wn'?'c409':'cerr';
-      row.innerHTML = `<span class="srw-rw">#${demoRow}</span>
-        <span class="srw-tm">${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})}</span>
-        <span class="srw-nm">${nm}</span>
-        <span class="srw-ph">${ph}</span>
-        <span class="srw-code ${codeClass}">${code}</span>
-        <span class="srw-ms">${ms}</span>
-        <span class="srw-id">${cls==='ok'?uuidSim().slice(0,8)+'…':'—'}</span>`;
-      sr.appendChild(row);
-      sr.scrollTop = sr.scrollHeight;
-      while(sr.children.length > 120) sr.removeChild(sr.children[0]);
-    }
-
-    // Add to ticker
-    const tk = document.getElementById('ticker');
-    if (tk) {
-      const tick = document.createElement('div');
-      tick.className = 'tick';
-      tick.innerHTML = `<span class="xrw">${demoRow}</span>
-        <span class="${cls==='ok'?'xok':cls==='wn'?'xwn':'xer'}">${cls==='ok'?'✓':cls==='wn'?'!':'✗'}</span>
-        <span class="xnm">${nm}</span>
-        <span class="xph">${e164.slice(-10)}</span>
-        <span class="${cls==='ok'?'xok':cls==='wn'?'xwn':'xer'}">${code}</span>
-        <span class="xms">${ms}ms</span>`;
-      tk.insertBefore(tick, tk.firstChild);
-      while(tk.children.length > 50) tk.removeChild(tk.lastChild);
-    }
-
-    // Add to activity feed occasionally
-    if (Math.random() > 0.85) {
-      addActivity(cls, `${cls==='ok'?'✓':cls==='wn'?'⚠':'✗'} Row <b>${demoRow}</b> — <b>${nm}</b> ${e164} — <b>${shName}</b> — ${code}`, cls, cls==='ok'?'Uploaded':cls==='wn'?'Duplicate':'Failed');
-    }
-
-    // Update progress bar occasionally
-    if (demoRow % 10 === 0) {
-      S.sheets[0].cursor = 38202 + demoOk;
-      S.sheets[0].done = 38200 + demoOk;
-      typeof renderDashProg === "function" && typeof renderDashProg === "function" && renderDashProg();
-    }
-
-  }, 200);
-}
-
-function addErrLog(code, lbl, msg) {
-  const el = document.getElementById('errlog'); if (!el) return;
-  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
-  const d = document.createElement('div'); d.className = 'el';
-  d.innerHTML = `<span class="el-ts">${ts}</span> <span class="el-lbl ${code}">[${lbl}]</span> <span class="el-msg"> ${msg}</span>`;
-  el.insertBefore(d, el.firstChild);
-  while (el.children.length > 80) el.removeChild(el.lastChild);
-}
 
 // ═══════════════════════════════════
 // MATRIX
@@ -2349,7 +2209,7 @@ function renderProgressBars() {
 
 init();
 startRealDataPolling();
-startDemoSim();
+
 </script>
 </body>
 </html>
