@@ -420,83 +420,30 @@ input[type=range]{width:100%;accent-color:var(--amber);cursor:pointer}
 
 <!-- LIVE FEED -->
 <div class="tp full" id="tab-live">
-  <div class="live-shell">
-    <div class="live-left">
-      <div class="lstats">
-        <div class="lstat"><div class="lstat-l">Row #</div><div class="lstat-v g" id="lv-row">0000</div></div>
-        <div class="lstat"><div class="lstat-l">Rate/s</div><div class="lstat-v a" id="lv-rate">8.3</div></div>
-        <div class="lstat"><div class="lstat-l">201 OK</div><div class="lstat-v g" id="lv-ok">0</div></div>
-        <div class="lstat"><div class="lstat-l">Failed</div><div class="lstat-v r" id="lv-err">0</div></div>
-        <div class="lstat"><div class="lstat-l">404 LKP</div><div class="lstat-v a" id="lv-404">0</div></div>
-        <div class="lstat"><div class="lstat-l">409 DUP</div><div class="lstat-v c" id="lv-409">0</div></div>
+  <div style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+    <!-- Status bar -->
+    <div style="padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="live-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted2)"></div>
+        <span id="live-status-txt" style="font-size:11px;font-weight:700;color:var(--muted)">IDLE — click ▶ Run to start</span>
       </div>
-      <div style="padding:0 10px 8px">
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 10px;font-size:9px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Sheet</span><span style="font-family:var(--mono);color:var(--text2)" id="lv-sheet">My Sheet 1</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Range</span><span style="font-family:var(--mono);color:var(--amber2)" id="lv-range">1–2,000</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--muted)">Drip</span><span style="font-family:var(--mono);color:var(--green2)" id="lv-drip">50/4min</span></div>
-          <div class="pt" style="height:3px"><div class="pf" style="background:var(--amber2);width:0%" id="lv-dp"></div></div>
-        </div>
-      </div>
-      <div class="ticker-wrap"><div id="ticker"></div></div>
-    </div>
-    <div class="live-center">
-      <canvas class="matrix-bg" id="mc"></canvas>
-      <div class="stream-over">
-        <div class="stream-hd">
-          <div class="stream-title">// LEAD AUTO · LIVE STREAM — DEMO MODE</div>
-          <div class="ss-bar">
-            <div class="ss"><div class="ss-v g" id="sv-ok">0</div><div class="ss-l">201 OK</div></div>
-            <div class="ss"><div class="ss-v b" id="sv-409">0</div><div class="ss-l">409 DUP</div></div>
-            <div class="ss"><div class="ss-v a" id="sv-404">0</div><div class="ss-l">404 LKP</div></div>
-            <div class="ss"><div class="ss-v r" id="sv-err">0</div><div class="ss-l">FAIL</div></div>
-            <div class="ss"><div class="ss-v c" id="sv-ms">—</div><div class="ss-l">MS</div></div>
-          </div>
-        </div>
-        <div class="stream-cols"><span>ROW</span><span>TIME</span><span>NAME</span><span>PHONE</span><span>CODE</span><span>MS</span><span>UUID</span></div>
-        <div class="stream-rows" id="srows"></div>
+      <div style="display:flex;gap:12px;margin-left:auto">
+        <div style="text-align:center"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--green2)" id="lv-ok">0</div><div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">201 OK</div></div>
+        <div style="text-align:center"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue2)" id="lv-409">0</div><div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Duplicate</div></div>
+        <div style="text-align:center"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--amber2)" id="lv-404">0</div><div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">404 Quirk</div></div>
+        <div style="text-align:center"><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--red2)" id="lv-err">0</div><div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Failed</div></div>
       </div>
     </div>
-    <div class="live-right">
-      <div class="lr-hd">Error Log<button class="btn xs" onclick="document.getElementById('errlog').innerHTML=''">Clear</button></div>
-      <div class="err-log" id="errlog"></div>
+    <!-- Real log stream -->
+    <div style="flex:1;overflow-y:auto;background:var(--bg);font-family:var(--mono);font-size:10px" id="live-stream">
+      <div style="padding:40px;text-align:center;color:var(--muted)">
+        <div style="font-size:32px;margin-bottom:12px">⏸</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px">System Idle</div>
+        <div style="font-size:11px">Select a sheet from the dropdown above and click ▶ Run to start uploading leads</div>
+        <div style="font-size:10px;margin-top:8px;color:var(--muted2)">Real upload logs will stream here when running</div>
+      </div>
     </div>
   </div>
-</div>
-
-<!-- CONSOLE -->
-<div class="tp full" id="tab-console">
-  <div class="console-shell">
-    <div class="con-main">
-      <div class="con-tb">
-        <div class="cfl">
-          <button class="cfb all on" onclick="setFilt('all',this)">ALL</button>
-          <button class="cfb ok" onclick="setFilt('ok',this)">OK</button>
-          <button class="cfb er" onclick="setFilt('er',this)">ERR</button>
-          <button class="cfb wn" onclick="setFilt('wn',this)">WARN</button>
-          <button class="cfb in" onclick="setFilt('in',this)">INFO</button>
-          <button class="cfb api" onclick="setFilt('api',this)">API</button>
-        </div>
-        <input class="csearch" id="csearch" placeholder="Search…" oninput="renderCon()"/>
-        <button class="btn sm" onclick="S.conlog=[];renderCon()">Clear</button>
-        <button class="btn sm" onclick="exportLogs()">↓ Export</button>
-      </div>
-      <div id="conlog"></div>
-    </div>
-    <div class="con-right">
-      <div class="cpanel">
-        <div class="cpanel-t">Error Counts</div>
-        <div class="esum-row"><span class="esum-code" style="color:var(--red2)">INVALID_PHONE</span><span class="esum-cnt" style="color:var(--red2)" id="ec-ph">0</span></div>
-        <div class="esum-row"><span class="esum-code" style="color:var(--amber2)">404_QUIRK</span><span class="esum-cnt" style="color:var(--amber2)" id="ec-404">0</span></div>
-        <div class="esum-row"><span class="esum-code" style="color:var(--blue2)">409_DUPLICATE</span><span class="esum-cnt" style="color:var(--blue2)" id="ec-409c">0</span></div>
-        <div class="esum-row"><span class="esum-code" style="color:var(--red2)">TIMEOUT</span><span class="esum-cnt" style="color:var(--red2)" id="ec-to">0</span></div>
-        <div class="esum-row"><span class="esum-code" style="color:var(--red2)">UUID_MISMATCH</span><span class="esum-cnt" style="color:var(--red2)" id="ec-uid">0</span></div>
-      </div>
-      <div class="cpanel" style="border-bottom:none"><div class="cpanel-t">API Trace</div></div>
-      <div style="flex:1;overflow-y:auto;padding:9px 11px" id="atrace"></div>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════════════════════
      DRIP CONTROL WIZARD
@@ -1033,6 +980,7 @@ input[type=range]{width:100%;accent-color:var(--amber);cursor:pointer}
 </div>
 
 <script>
+const RENDER_URL = 'https://lead-auto-server.onrender.com';
 // ═══════════════════════════════════
 // STATE
 // ═══════════════════════════════════
@@ -1080,7 +1028,7 @@ const S = {
 function go(id, el) {
   document.querySelectorAll('.tp').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
-  document.getElementById('tab-' + id).classList.add('on');
+  const tabEl = document.getElementById('tab-' + id); if (tabEl) tabEl.classList.add('on');
   if (el) el.classList.add('on');
   const T = { dashboard:'Dashboard', live:'Live Feed', console:'Console', drip:'Drip Control',
     recurring:'Recurring Drips', manual:'Manual Upload', schedule:'Schedule',
@@ -1760,7 +1708,7 @@ function renderTrace() {
 // ═══════════════════════════════════
 
 // === REAL DATA CONNECTIONS ===
-const RENDER_URL = 'https://lead-auto-server.onrender.com';
+
 const WEB_APPS = [
   'https://script.google.com/macros/s/AKfycbx-h5JHlpgjLhSTKVcQkSOZb_DPCXLTEDQCzx6ACtOq05xyABiaDHFNFiH-Jnyxbqpo/exec',
   'https://script.google.com/macros/s/AKfycbyPQpNQr7BadgleYXWqnlboK_RG0uQ4DOzDutMwauRux2jTd_BJ7ZcVbihbwDqUBe0O/exec',
@@ -1770,6 +1718,7 @@ const WEB_APPS = [
 async function fetchAllStatus() {
   let totalDone = 0;
   let anyRunning = false;
+  let totalOk = 0, totalFail = 0, total404 = 0, total409 = 0;
 
   try {
     const res  = await fetch(RENDER_URL + '/all-status');
@@ -1788,24 +1737,59 @@ async function fetchAllStatus() {
         if (d.status === 'running') anyRunning = true;
       }
 
-      // Only show logs from the last 5 minutes — no old log replay
+      // Only show NEW logs from last 5 minutes
       const logs = (sh.data && sh.data.logs) || [];
       const fiveMinAgo = Date.now() - 5 * 60 * 1000;
       logs.forEach(lg => {
         const logTime = new Date(lg.ts).getTime();
-        if (logTime < fiveMinAgo) return; // skip old logs
+        if (logTime < fiveMinAgo) return;
         const key = lg.ts + '|' + lg.msg;
-        if (S._seenLogs && S._seenLogs.has(key)) return; // skip already shown
         if (!S._seenLogs) S._seenLogs = new Set();
+        if (S._seenLogs.has(key)) return;
         S._seenLogs.add(key);
+
         const lvl = lg.level === 'OK' ? 'ok' : lg.level === 'ERROR' ? 'er' : lg.level === 'WARN' ? 'wn' : 'in';
         const sn  = S.sheets[sh.sheetIndex] ? S.sheets[sh.sheetIndex].customName : 'Sheet ' + (sh.sheetIndex + 1);
         const ts  = new Date(lg.ts).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
         addLog(lvl, sn, ts, lg.msg);
+
+        // Count stats from real logs
+        if (lg.level === 'OK' && lg.msg.includes('201')) totalOk++;
+        if (lg.level === 'FAIL' || lg.level === 'ERROR') totalFail++;
+        if (lg.msg.includes('404')) total404++;
+        if (lg.msg.includes('409')) total409++;
+
+        // Push to live feed stream
+        pushToLiveFeed(lvl, sn, ts, lg.msg);
       });
     });
   } catch(e) {
     addLog('er', 'server', 'poll', 'Server fetch failed: ' + e.message);
+  }
+
+  // Update live feed counters
+  const okEl = document.getElementById('lv-ok'); if(okEl) okEl.textContent = totalOk;
+  const errEl = document.getElementById('lv-err'); if(errEl) errEl.textContent = totalFail;
+  const e404El = document.getElementById('lv-404'); if(e404El) e404El.textContent = total404;
+  const e409El = document.getElementById('lv-409'); if(e409El) e409El.textContent = total409;
+
+  // Update status indicator
+  const dot = document.getElementById('live-status-dot');
+  const txt = document.getElementById('live-status-txt');
+  if (dot && txt) {
+    if (anyRunning) {
+      dot.style.background = 'var(--green2)';
+      dot.style.boxShadow = '0 0 6px var(--green2)';
+      dot.style.animation = 'bl 1s infinite';
+      txt.textContent = 'RUNNING — uploading leads to PitchPrfct';
+      txt.style.color = 'var(--green2)';
+    } else {
+      dot.style.background = 'var(--muted2)';
+      dot.style.boxShadow = 'none';
+      dot.style.animation = 'none';
+      txt.textContent = 'IDLE — click ▶ Run to start';
+      txt.style.color = 'var(--muted)';
+    }
   }
 
   // Update status chip
@@ -1819,8 +1803,24 @@ async function fetchAllStatus() {
   if (todayEl) todayEl.textContent = totalDone.toLocaleString();
   const totalEl = document.getElementById('d-total');
   if (totalEl) totalEl.textContent = totalDone.toLocaleString();
-  typeof renderProgressBars === 'function' && renderProgressBars();
   typeof renderDashProg === 'function' && renderDashProg();
+}
+
+function pushToLiveFeed(lvl, sheet, ts, msg) {
+  const stream = document.getElementById('live-stream');
+  if (!stream) return;
+  // Remove idle placeholder if present
+  const placeholder = stream.querySelector('div[style*="text-align:center"]');
+  if (placeholder) placeholder.remove();
+
+  const colors = {ok:'var(--green2)', er:'var(--red2)', wn:'var(--amber2)', in:'var(--blue2)'};
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:58px 100px 1fr;gap:8px;padding:3px 14px;border-left:2px solid ' + (colors[lvl]||'var(--muted2)') + ';line-height:1.6';
+  row.innerHTML = '<span style="color:var(--muted2)">' + ts + '</span><span style="color:var(--text2)">' + sheet + '</span><span style="color:' + (colors[lvl]||'var(--text2)') + '">' + msg + '</span>';
+  stream.appendChild(row);
+  stream.scrollTop = stream.scrollHeight;
+  // Keep max 200 rows
+  while (stream.children.length > 200) stream.removeChild(stream.children[0]);
 }
 
 
