@@ -1718,24 +1718,28 @@ const WEB_APPS = [
 async function fetchAllStatus() {
   let totalDone = 0;
   let anyRunning = false;
-  let totalOk = 0, totalFail = 0, total404 = 0, total409 = 0;
 
   try {
     const res  = await fetch(RENDER_URL + '/all-status');
     const data = await res.json();
-    console.log('RENDER DATA:', JSON.stringify(data).slice(0, 500));
     if (!data.sheets) return;
 
+    // Render returns 3 entries, one per sheet's Apps Script
+    // Entry 0 = Sheet1 script (knows Sheet1 total), Entry 1 = Sheet2, Entry 2 = Sheet3
     data.sheets.forEach(sh => {
       const idx = sh.sheetIndex;
+      if (!S.sheets[idx]) return;
+      
+      // The Apps Script returns all 3 sheet configs but only knows the total
+      // for sheets that are open in that spreadsheet
       const sheetData = sh.data && sh.data.sheets;
-      // Try finding by index with total > 0, or fall back to the active sheet index
-      let d = null;
-      if (sheetData) {
-        d = sheetData.find(s => s && s.index === idx && s.total > 0);
-        if (!d) d = sheetData.find(s => s && s.total > 0);
-      }
-      if (d && S.sheets[idx]) {
+      if (!sheetData) return;
+
+      // Find the entry with a non-zero total that matches this script's active sheet
+      const activeIdx = sh.data.activeSheet;
+      const d = sheetData[activeIdx] || sheetData.find(s => s && s.total > 0);
+      
+      if (d && d.total > 0) {
         S.sheets[idx].cursor    = d.cursor    || 0;
         S.sheets[idx].total     = d.total     || 0;
         S.sheets[idx].done      = d.done      || 0;
@@ -1743,7 +1747,6 @@ async function fetchAllStatus() {
         S.sheets[idx].status    = d.status    || 'idle';
         totalDone += d.done || 0;
         if (d.status === 'running') anyRunning = true;
-        console.log('Sheet ' + idx + ' mapped: total=' + d.total + ' done=' + d.done);
       }
 
       // Only show NEW logs from last 5 minutes
@@ -1756,64 +1759,43 @@ async function fetchAllStatus() {
         if (!S._seenLogs) S._seenLogs = new Set();
         if (S._seenLogs.has(key)) return;
         S._seenLogs.add(key);
-
         const lvl = lg.level === 'OK' ? 'ok' : lg.level === 'ERROR' ? 'er' : lg.level === 'WARN' ? 'wn' : 'in';
-        const sn  = S.sheets[sh.sheetIndex] ? S.sheets[sh.sheetIndex].customName : 'Sheet ' + (sh.sheetIndex + 1);
+        const sn  = S.sheets[idx] ? S.sheets[idx].customName : 'Sheet ' + (idx + 1);
         const ts  = new Date(lg.ts).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
         addLog(lvl, sn, ts, lg.msg);
-
-        // Count stats from real logs
-        if (lg.level === 'OK' && lg.msg.includes('201')) totalOk++;
-        if (lg.level === 'FAIL' || lg.level === 'ERROR') totalFail++;
-        if (lg.msg.includes('404')) total404++;
-        if (lg.msg.includes('409')) total409++;
-
-        // Push to live feed stream
         pushToLiveFeed(lvl, sn, ts, lg.msg);
       });
     });
   } catch(e) {
-    addLog('er', 'server', 'poll', 'Server fetch failed: ' + e.message);
-  }
-
-  // Update live feed counters
-  const okEl = document.getElementById('lv-ok'); if(okEl) okEl.textContent = totalOk;
-  const errEl = document.getElementById('lv-err'); if(errEl) errEl.textContent = totalFail;
-  const e404El = document.getElementById('lv-404'); if(e404El) e404El.textContent = total404;
-  const e409El = document.getElementById('lv-409'); if(e409El) e409El.textContent = total409;
-
-  // Update status indicator
-  const dot = document.getElementById('live-status-dot');
-  const txt = document.getElementById('live-status-txt');
-  if (dot && txt) {
-    if (anyRunning) {
-      dot.style.background = 'var(--green2)';
-      dot.style.boxShadow = '0 0 6px var(--green2)';
-      dot.style.animation = 'bl 1s infinite';
-      txt.textContent = 'RUNNING — uploading leads to PitchPrfct';
-      txt.style.color = 'var(--green2)';
-    } else {
-      dot.style.background = 'var(--muted2)';
-      dot.style.boxShadow = 'none';
-      dot.style.animation = 'none';
-      txt.textContent = 'IDLE — click ▶ Run to start';
-      txt.style.color = 'var(--muted)';
-    }
+    addLog('er', 'server', 'poll', 'Render fetch failed: ' + e.message);
   }
 
   // Update status chip
   const chip = document.getElementById('rchip');
   if (chip) {
-    if (anyRunning) { chip.textContent = '● RUNNING'; chip.className = 'chip g'; }
-    else { chip.textContent = '⏸ IDLE'; chip.className = 'chip n'; }
+    chip.textContent = anyRunning ? '● RUNNING' : '⏸ IDLE';
+    chip.className   = anyRunning ? 'chip g' : 'chip n';
   }
 
+  // Update counters
   const todayEl = document.getElementById('d-today');
   if (todayEl) todayEl.textContent = totalDone.toLocaleString();
   const totalEl = document.getElementById('d-total');
   if (totalEl) totalEl.textContent = totalDone.toLocaleString();
+
+  // Update live feed status
+  const dot = document.getElementById('live-status-dot');
+  const txt = document.getElementById('live-status-txt');
+  if (dot && txt) {
+    dot.style.background = anyRunning ? 'var(--green2)' : 'var(--muted2)';
+    txt.textContent = anyRunning ? 'RUNNING — uploading leads to PitchPrfct' : 'IDLE — click ▶ Run to start';
+    txt.style.color = anyRunning ? 'var(--green2)' : 'var(--muted)';
+  }
+
   typeof renderDashProg === 'function' && renderDashProg();
+  typeof renderSheetManager === 'function' && renderSheetManager();
 }
+
 
 function pushToLiveFeed(lvl, sheet, ts, msg) {
   const stream = document.getElementById('live-stream');
