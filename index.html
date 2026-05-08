@@ -274,10 +274,47 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <div class="content" id="tab-schedule">
       <div class="page">
         <div class="card">
+          <div class="card-title">Add New Schedule</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div class="form-group">
+              <label>Sheet</label>
+              <select id="sc-sheet" style="width:100%;background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-family:var(--fn);font-size:11px;padding:7px 9px;border-radius:6px;outline:none">
+                <option value="0">Dialer Leads</option>
+                <option value="1">Agent Leads</option>
+                <option value="2">NE Agent &amp; LifeX</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Time (ET)</label>
+              <input type="time" id="sc-time" value="09:00" style="width:100%;background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 9px;border-radius:6px;outline:none"/>
+            </div>
+            <div class="form-group">
+              <label>Tag to Apply</label>
+              <select id="sc-tag" style="width:100%;background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-family:var(--fn);font-size:11px;padding:7px 9px;border-radius:6px;outline:none">
+                <option>Lead Auto Testtt</option>
+                <option>[Reg | 24]</option>
+                <option>[Agent | 24]</option>
+                <option>[NE Agents | 24]</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Days</label>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px" id="sc-days">
+                <button type="button" class="day-btn active" data-day="Mon" onclick="toggleDay(this)">Mon</button>
+                <button type="button" class="day-btn active" data-day="Tue" onclick="toggleDay(this)">Tue</button>
+                <button type="button" class="day-btn active" data-day="Wed" onclick="toggleDay(this)">Wed</button>
+                <button type="button" class="day-btn active" data-day="Thu" onclick="toggleDay(this)">Thu</button>
+                <button type="button" class="day-btn active" data-day="Fri" onclick="toggleDay(this)">Fri</button>
+                <button type="button" class="day-btn" data-day="Sat" onclick="toggleDay(this)">Sat</button>
+                <button type="button" class="day-btn" data-day="Sun" onclick="toggleDay(this)">Sun</button>
+              </div>
+            </div>
+          </div>
+          <button class="btn run" onclick="saveSchedule()">+ Add Schedule</button>
+        </div>
+        <div class="card">
           <div class="card-title">Scheduled Runs</div>
-          <p style="color:var(--muted);font-size:11px;margin-bottom:16px">Set automatic upload times. The script will run at these times daily using the checkCommand trigger.</p>
-          <div id="schedule-list"></div>
-          <button class="btn run" onclick="addSchedule()" style="margin-top:12px">+ Add Schedule</button>
+          <div id="schedule-list"><div style="color:var(--muted);font-size:11px;padding:8px 0">No schedules set yet.</div></div>
         </div>
       </div>
     </div>
@@ -721,39 +758,49 @@ async function applyFill(idx, color) {
 }
 
 // ── SCHEDULE ──────────────────────────────────────────────
+function toggleDay(btn) {
+  btn.classList.toggle('active');
+}
+
+function saveSchedule() {
+  const sheet = parseInt(document.getElementById('sc-sheet').value);
+  const time  = document.getElementById('sc-time').value;
+  const tag   = document.getElementById('sc-tag').value;
+  const days  = Array.from(document.querySelectorAll('#sc-days .day-btn.active')).map(b => b.dataset.day);
+  if (!days.length) { alert('Select at least one day'); return; }
+  if (!time) { alert('Select a time'); return; }
+  S.schedules.push({ sheet, time, days, tag });
+  localStorage.setItem('la_schedules', JSON.stringify(S.schedules));
+  addLog('ok', 'schedule', 'Schedule added: ' + S.sheets[sheet].name + ' at ' + time + ' on ' + days.join(', '));
+  addActivity('Schedule added: ' + S.sheets[sheet].name + ' at ' + time, 'ok');
+  renderSchedule();
+}
+
 function renderSchedule() {
   const el = document.getElementById('schedule-list');
   if (!el) return;
+
+  // Update tag dropdown with real PP tags
+  const tagSel = document.getElementById('sc-tag');
+  if (tagSel && S.ppTags.length) {
+    const cur = tagSel.value;
+    tagSel.innerHTML = S.ppTags.map(t => `<option value="${t}" ${t===cur?'selected':''}>${t}</option>`).join('');
+  }
+
   if (!S.schedules.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:12px 0">No schedules set. Add one below.</div>';
+    el.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 0">No schedules set yet.</div>';
     return;
   }
   el.innerHTML = S.schedules.map((sc, i) => `
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
       <div style="flex:1">
         <div style="font-size:12px;font-weight:600">${S.sheets[sc.sheet]?.name || 'Sheet ' + sc.sheet}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">${sc.days.join(', ')} at ${sc.time} ET</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${sc.days.join(' · ')} &nbsp;at&nbsp; <span style="color:var(--amber2);font-family:var(--mono)">${sc.time} ET</span></div>
+        <div style="font-size:10px;color:var(--blue2);margin-top:2px">Tag: ${sc.tag}</div>
       </div>
-      <div style="font-size:10px;color:var(--amber2);font-weight:600">${sc.tag}</div>
-      <button class="btn" onclick="removeSchedule(${i})" style="color:var(--red2)">✕</button>
+      <button class="btn" onclick="removeSchedule(${i})" style="color:var(--red2);border-color:rgba(255,23,68,.2)">Remove</button>
     </div>
   `).join('');
-}
-
-function addSchedule() {
-  const sheet = parseInt(prompt('Which sheet? (0=Dialer, 1=Agent, 2=NE Agent)', '0'));
-  if (isNaN(sheet) || sheet < 0 || sheet > 2) return;
-  const time = prompt('What time? (e.g. 09:00)', '09:00');
-  if (!time) return;
-  const daysInput = prompt('Which days? (e.g. Mon,Tue,Wed,Thu,Fri)', 'Mon,Tue,Wed,Thu,Fri');
-  if (!daysInput) return;
-  const tag = prompt('Tag to apply?', S.sheets[sheet].activeTag);
-  if (!tag) return;
-  S.schedules.push({ sheet, time, days: daysInput.split(',').map(d => d.trim()), tag });
-  localStorage.setItem('la_schedules', JSON.stringify(S.schedules));
-  addLog('ok', 'schedule', 'Schedule added: ' + S.sheets[sheet].name + ' at ' + time);
-  addActivity('Schedule added: ' + S.sheets[sheet].name + ' at ' + time, 'ok');
-  renderSchedule();
 }
 
 function removeSchedule(i) {
