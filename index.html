@@ -543,15 +543,23 @@ function renderProgress() {
   const el = document.getElementById('sheet-prog');
   if (!el) return;
   el.innerHTML = S.sheets.map(sh => {
-    const pct = sh.total > 0 ? Math.min(sh.done / sh.total * 100, 100).toFixed(1) : '0';
+    const done = sh.cursor > 2 ? sh.cursor - 2 : 0;
+    const pct  = sh.total > 0 ? Math.min(done / sh.total * 100, 100).toFixed(1) : '0';
+    const rem  = Math.max(0, sh.total - sh.cursor);
     return `<div class="prog-wrap">
       <div class="prog-label">
         <span style="font-weight:600">${sh.name}</span>
-        <span>${sh.done.toLocaleString()} / ${sh.total.toLocaleString()}</span>
+        <span style="font-family:var(--mono);font-size:10px">${done.toLocaleString()} done &nbsp;·&nbsp; ${rem.toLocaleString()} remaining &nbsp;·&nbsp; ${pct}%</span>
       </div>
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${sh.color}"></div></div>
+      <div style="font-size:9px;color:var(--muted);margin-top:3px">Next row: ${sh.cursor.toLocaleString()} of ${sh.total.toLocaleString()}</div>
     </div>`;
   }).join('');
+
+  // Update today counter with total done across all sheets
+  const totalDone = S.sheets.reduce((a,s) => a + (s.cursor > 2 ? s.cursor - 2 : 0), 0);
+  const todayEl = document.getElementById('d-today');
+  if (todayEl) todayEl.textContent = totalDone.toLocaleString();
 
   // Update totals
   const total = S.sheets.reduce((a,s) => a + s.total, 0);
