@@ -1679,8 +1679,8 @@ function addLog(lvl, src, tag, msg, det) {
   const ts = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   S.conlog.unshift({ ts, lvl, src, tag, msg, det: det || null });
   if (S.conlog.length > 500) S.conlog.pop();
-  if (lvl === 'er' || lvl === 'wn') { conErrors++; document.getElementById('conbadge').textContent = conErrors > 99 ? '99+' : conErrors; }
-  if (document.getElementById('tab-console').classList.contains('on')) renderCon();
+  if (lvl === 'er' || lvl === 'wn') { conErrors++; const _cb = document.getElementById('conbadge'); if(_cb) _cb.textContent = conErrors > 99 ? '99+' : conErrors; }
+  const _tc = document.getElementById('tab-console'); if (_tc && _tc.classList.contains('on')) renderCon();
 }
 function renderCon() {
   const el = document.getElementById('conlog'); if (!el) return;
@@ -1723,13 +1723,18 @@ async function fetchAllStatus() {
   try {
     const res  = await fetch(RENDER_URL + '/all-status');
     const data = await res.json();
+    console.log('RENDER DATA:', JSON.stringify(data).slice(0, 500));
     if (!data.sheets) return;
 
     data.sheets.forEach(sh => {
       const idx = sh.sheetIndex;
-      // Each sheet's Apps Script returns all 3 sheets — pick the one that matches this script's index
       const sheetData = sh.data && sh.data.sheets;
-      const d = sheetData && sheetData.find(s => s && s.index === idx && s.total > 0);
+      // Try finding by index with total > 0, or fall back to the active sheet index
+      let d = null;
+      if (sheetData) {
+        d = sheetData.find(s => s && s.index === idx && s.total > 0);
+        if (!d) d = sheetData.find(s => s && s.total > 0);
+      }
       if (d && S.sheets[idx]) {
         S.sheets[idx].cursor    = d.cursor    || 0;
         S.sheets[idx].total     = d.total     || 0;
@@ -1738,6 +1743,7 @@ async function fetchAllStatus() {
         S.sheets[idx].status    = d.status    || 'idle';
         totalDone += d.done || 0;
         if (d.status === 'running') anyRunning = true;
+        console.log('Sheet ' + idx + ' mapped: total=' + d.total + ' done=' + d.done);
       }
 
       // Only show NEW logs from last 5 minutes
