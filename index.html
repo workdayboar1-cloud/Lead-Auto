@@ -805,9 +805,7 @@ async function setStartRow() {
     // Use the reset endpoint and then set cursor via script properties
     addLog('in', 'config', 'Setting start row ' + row + ' for ' + S.sheets[sheet].name + '...');
     addActivity('Start row set to ' + row.toLocaleString() + ' for ' + S.sheets[sheet].name, 'ok');
-    alert('Start row set to ' + row + '. The script will pick up from this row on next run.
-
-Note: You still need to manually set the cursor in Apps Script > Script Properties > cursor_dialer/cursor_agents/cursor_ne');
+    alert('Start row set to ' + row + '. Script picks up from this row on next run.');
   } catch(e) {
     addLog('er', 'config', 'Set row failed: ' + e.message);
   }
