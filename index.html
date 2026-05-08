@@ -1731,8 +1731,8 @@ async function fetchAllStatus() {
   }
   document.getElementById('d-today').textContent = totalDone.toLocaleString();
   document.getElementById('d-total').textContent = totalDone.toLocaleString();
-  renderProgressBars && renderProgressBars();
-  renderDashProg && renderDashProg();
+  typeof renderProgressBars === "function" && renderProgressBars();
+  typeof renderDashProg === "function" && typeof renderDashProg === "function" && renderDashProg();
 }
 
 async function fetchRealTags() {
@@ -1778,8 +1778,8 @@ async function fetchAllStatus() {
     if (todayEl) todayEl.textContent = totalDone.toLocaleString();
     const totalEl = document.getElementById('d-total');
     if (totalEl) totalEl.textContent = totalDone.toLocaleString();
-    renderProgressBars && renderProgressBars();
-    renderDashProg && renderDashProg();
+    if (typeof renderProgressBars === 'function') renderProgressBars();
+    if (typeof renderDashProg === 'function') typeof renderDashProg === "function" && renderDashProg();
   } catch(e) {
     addLog('er', 'server', 'poll', 'Server fetch failed: ' + e.message);
   }
@@ -1848,7 +1848,7 @@ function startDemoSim() {
   S.sheets[0].total = 247330; S.sheets[0].cursor = 38202; S.sheets[0].done = 38200;
   S.sheets[1].total = 251002; S.sheets[1].cursor = 12002; S.sheets[1].done = 12000;
   S.sheets[2].total = 249788; S.sheets[2].cursor = 2;     S.sheets[2].done = 0;
-  renderDashProg && renderDashProg();
+  typeof renderDashProg === "function" && typeof renderDashProg === "function" && renderDashProg();
 
   setInterval(() => {
     if (S.paused) return;
@@ -1944,7 +1944,7 @@ function startDemoSim() {
     if (demoRow % 10 === 0) {
       S.sheets[0].cursor = 38202 + demoOk;
       S.sheets[0].done = 38200 + demoOk;
-      renderDashProg && renderDashProg();
+      typeof renderDashProg === "function" && typeof renderDashProg === "function" && renderDashProg();
     }
 
   }, 200);
@@ -2197,6 +2197,21 @@ function init() {
       if (document.getElementById('tab-dashboard').classList.contains('on')) renderProgressBars();
     }
   }, 2500);
+}
+
+function renderDashProg() {
+  const el = document.getElementById('dash-prog');
+  if (!el) return;
+  const colors = ['var(--amber2)', 'var(--green2)', 'var(--blue2)', 'var(--purple2)'];
+  el.innerHTML = S.sheets.map((sh, i) => {
+    const pct = sh.total > 0 ? Math.min(sh.cursor / sh.total * 100, 100).toFixed(1) : '0';
+    const done = sh.done || 0;
+    return '<div class="pw"><div class="pl"><span>' + (sh.customName || sh.cname || 'Sheet ' + (i+1)) + '</span><span class="v">' + done.toLocaleString() + '/' + (sh.total||0).toLocaleString() + '</span></div><div class="ptrack"><div class="pfill" style="width:' + pct + '%;background:' + colors[i % colors.length] + '"></div></div></div>';
+  }).join('');
+}
+
+function renderProgressBars() {
+  renderDashProg();
 }
 
 init();
