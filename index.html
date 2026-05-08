@@ -1208,8 +1208,9 @@ function renderSheetManager() {
   const el = document.getElementById('sheet-manager-list');
   if (!el) return;
   el.innerHTML = S.sheets.map((sh, i) => {
-    const pct = (sh.cursor / sh.total * 100).toFixed(1);
-    const rem = sh.total - sh.cursor;
+    const pct = sh.total > 0 ? (sh.cursor / sh.total * 100).toFixed(1) : '0.0';
+    const rem = Math.max(0, sh.total - sh.cursor);
+    const tagOptions = S.ppTags.map(t => `<option value="${t}" ${sh.activeTag === t ? 'selected' : ''}>${t}</option>`).join('');
     return `<div class="sblk" style="display:flex;gap:16px;align-items:flex-start">
       <div style="font-size:28px;flex-shrink:0">📋</div>
       <div style="flex:1">
@@ -1220,10 +1221,10 @@ function renderSheetManager() {
           </div>
           <div style="display:flex;gap:6px">
             <button class="btn sm" onclick="editSheet(${i})">✏️ Edit</button>
-            <button class="btn sm dng" onclick="S.sheets.splice(${i},1);renderSheetManager();renderProgressBars()">Remove</button>
+            <button class="btn sm dng" onclick="sendCommand('reset');addLog('wn','sheet','reset','Cursor reset for ${sh.customName}')">↺ Reset Cursor</button>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
           <div style="background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:8px 10px">
             <div style="font-size:8px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.8px">Cursor</div>
             <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--amber2)">Row ${sh.cursor.toLocaleString()}</div>
@@ -1237,18 +1238,72 @@ function renderSheetManager() {
             <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green2)">${rem.toLocaleString()}</div>
           </div>
           <div style="background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:8px 10px">
-            <div style="font-size:8px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.8px">Fill Color</div>
-            <div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;border-radius:3px;background:${sh.fill};border:1px solid rgba(255,255,255,.1)"></div><code>${sh.fill}</code></div>
+            <div style="font-size:8px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.8px">Progress</div>
+            <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green2)">${pct}%</div>
           </div>
         </div>
-        <div class="pt" style="height:5px"><div class="pf" style="width:${pct}%;background:${sh.color}"></div></div>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between">
-          <span>${pct}% complete</span>
-          <button class="btn xs dng" onclick="resetSheetCursor(${i})">↺ Reset Cursor</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:5px">Active Tag (triggers PP workflow)</div>
+            <div style="display:flex;gap:6px">
+              <select id="tag-sel-${i}" style="flex:1;background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-family:var(--fn);font-size:11px;padding:6px 8px;border-radius:5px;outline:none" onchange="applyTagChange(${i},this.value)">
+                ${tagOptions || '<option>Loading tags...</option>'}
+              </select>
+              <button class="btn sm" onclick="syncTagsAndRefresh()">↻</button>
+            </div>
+            <div style="font-size:9px;color:var(--muted);margin-top:4px">Current: <b style="color:var(--blue2)">${sh.activeTag || sh.defaultTag || 'Not set'}</b></div>
+          </div>
+          <div>
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:5px">Row Fill Color (sent rows)</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="color" value="${sh.fill || '#c6efce'}" onchange="applyFillChange(${i},this.value)" style="width:36px;height:32px;border-radius:4px;border:1px solid var(--border2);padding:2px;cursor:pointer;background:var(--bg4)"/>
+              <div style="flex:1;background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:6px 9px;font-family:var(--mono);font-size:11px;color:var(--amber2)">${sh.fill || '#c6efce'}</div>
+            </div>
+            <div style="font-size:9px;color:var(--muted);margin-top:4px">Applied to cols A–B after each successful upload</div>
+          </div>
+        </div>
+        <div style="background:var(--bg4);border-radius:5px;padding:3px 0;margin-bottom:6px"><div style="height:5px;border-radius:5px;background:${sh.color || 'var(--amber2)'};width:${pct}%;transition:width .5s"></div></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn sm suc" onclick="setActiveSheet('${i}');sendCommand('run')" style="flex:1">▶ Run This Sheet</button>
+          <button class="btn sm dng" onclick="setActiveSheet('${i}');sendCommand('pause')" style="flex:1">⏸ Pause</button>
         </div>
       </div>
     </div>`;
   }).join('');
+}
+
+async function applyTagChange(sheetIdx, tag) {
+  if (!tag) return;
+  S.sheets[sheetIdx].activeTag = tag;
+  try {
+    const res  = await fetch(RENDER_URL + '/set-tag?sheet=' + sheetIdx + '&tag=' + encodeURIComponent(tag));
+    const data = await res.json();
+    if (data.ok) {
+      addLog('ok', 'config', 'tag', 'Tag for ' + S.sheets[sheetIdx].customName + ' set to: ' + tag);
+      addActivity('ok', 'Tag updated — <b>' + S.sheets[sheetIdx].customName + '</b> will now use tag: <b>' + tag + '</b>', 'ok', 'Updated');
+    }
+  } catch(e) {
+    addLog('er', 'config', 'tag', 'Tag update failed: ' + e.message);
+  }
+}
+
+async function applyFillChange(sheetIdx, color) {
+  S.sheets[sheetIdx].fill = color;
+  renderSheetManager();
+  try {
+    const res  = await fetch(RENDER_URL + '/set-fill?sheet=' + sheetIdx + '&color=' + encodeURIComponent(color));
+    const data = await res.json();
+    if (data.ok) addLog('ok', 'config', 'fill', 'Fill color for ' + S.sheets[sheetIdx].customName + ' set to: ' + color);
+  } catch(e) {
+    addLog('er', 'config', 'fill', 'Fill color update failed: ' + e.message);
+  }
+}
+
+async function syncTagsAndRefresh() {
+  addLog('in', 'pp-api', 'tags', 'Syncing tags from PitchPrfct...');
+  await fetchRealTags();
+  renderSheetManager();
+  addLog('ok', 'pp-api', 'tags', S.ppTags.length + ' tags loaded — sheet manager updated');
 }
 
 function editSheet(i) {
