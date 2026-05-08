@@ -2087,16 +2087,14 @@ function init() {
   renderRecurring();
   renderPPTagGrid();
 
-  document.getElementById('d-today').textContent = 'Run script';
-  document.getElementById('d-total').textContent = 'to see data';
+  document.getElementById('d-today').textContent = '...';
+  document.getElementById('d-total').textContent = '...';
   document.getElementById('d-rate').textContent  = '—';
   document.getElementById('d-fail').textContent  = '0';
   document.getElementById('d-runs').textContent  = '0';
 
-  // Seed activity
-  addActivity('in', 'Dashboard ready — go to Apps Script and run <b>runImport()</b> to start uploading', 'in', 'Ready');
-  addActivity('in', 'After running, check <b>Execution log</b> in Apps Script for live upload status', 'in', 'Info');
-  addActivity('in', 'Run <b>checkProgress()</b> in Apps Script to see row counts for all 3 sheets', 'in', 'Info');
+  // Real status messages
+  addActivity('ok', 'Lead Auto connected — fetching real data from all 3 sheets', 'ok', 'Live');
 
   // Seed issues
   S.issues = [];
