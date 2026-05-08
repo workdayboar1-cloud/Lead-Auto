@@ -2182,13 +2182,14 @@ async function doRefresh() {
 }
 
 function renderDashProg() {
-  const el = document.getElementById('dash-prog');
+  const el = document.getElementById('sheet-progress-bars') || document.getElementById('dash-prog');
   if (!el) return;
   const colors = ['var(--amber2)', 'var(--green2)', 'var(--blue2)', 'var(--purple2)'];
   el.innerHTML = S.sheets.map((sh, i) => {
-    const pct = sh.total > 0 ? Math.min(sh.cursor / sh.total * 100, 100).toFixed(1) : '0';
+    const pct = sh.total > 0 ? Math.min(sh.done / sh.total * 100, 100).toFixed(1) : '0';
     const done = sh.done || 0;
-    return '<div class="pw"><div class="pl"><span>' + (sh.customName || sh.cname || 'Sheet ' + (i+1)) + '</span><span class="v">' + done.toLocaleString() + '/' + (sh.total||0).toLocaleString() + '</span></div><div class="ptrack"><div class="pfill" style="width:' + pct + '%;background:' + colors[i % colors.length] + '"></div></div></div>';
+    const total = sh.total || 0;
+    return '<div class="pw" style="margin-bottom:8px"><div class="pl" style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:600">' + (sh.customName || 'Sheet ' + (i+1)) + '</span><span style="font-size:10px;color:var(--muted);font-family:var(--mono)">' + done.toLocaleString() + ' / ' + total.toLocaleString() + '</span></div><div class="ptrack" style="height:5px;background:var(--bg4);border-radius:3px"><div class="pfill" style="height:5px;border-radius:3px;width:' + pct + '%;background:' + colors[i % colors.length] + ';transition:width .5s"></div></div></div>';
   }).join('');
 }
 
