@@ -1726,13 +1726,16 @@ async function fetchAllStatus() {
     if (!data.sheets) return;
 
     data.sheets.forEach(sh => {
-      const d = sh.data && sh.data.sheets && sh.data.sheets[sh.sheetIndex];
-      if (d && S.sheets[sh.sheetIndex]) {
-        S.sheets[sh.sheetIndex].cursor    = d.cursor    || 0;
-        S.sheets[sh.sheetIndex].total     = d.total     || 0;
-        S.sheets[sh.sheetIndex].done      = d.done      || 0;
-        S.sheets[sh.sheetIndex].activeTag = d.activeTag || S.sheets[sh.sheetIndex].activeTag;
-        S.sheets[sh.sheetIndex].status    = d.status    || 'idle';
+      const idx = sh.sheetIndex;
+      // Each sheet's Apps Script returns all 3 sheets — pick the one that matches this script's index
+      const sheetData = sh.data && sh.data.sheets;
+      const d = sheetData && sheetData.find(s => s && s.index === idx && s.total > 0);
+      if (d && S.sheets[idx]) {
+        S.sheets[idx].cursor    = d.cursor    || 0;
+        S.sheets[idx].total     = d.total     || 0;
+        S.sheets[idx].done      = d.done      || 0;
+        S.sheets[idx].activeTag = d.activeTag || S.sheets[idx].activeTag;
+        S.sheets[idx].status    = d.status    || 'idle';
         totalDone += d.done || 0;
         if (d.status === 'running') anyRunning = true;
       }
