@@ -420,6 +420,37 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
             <div id="render-status" style="font-family:var(--mono);font-size:11px;color:var(--muted)">Checking...</div>
           </div>
         </div>
+        <div class="card">
+          <div class="card-title">Trigger Setup — Required for Run Button</div>
+          <p style="color:var(--muted);font-size:11px;margin-bottom:14px">To enable the ▶ Run button, add a <b style="color:var(--amber2)">checkCommand</b> trigger to each Google Sheet. Do this once per sheet.</p>
+          <div style="background:var(--bg3);border-radius:8px;padding:14px;font-size:11px;line-height:1.8;color:var(--text2)">
+            <div style="margin-bottom:8px;font-weight:700;color:var(--amber2)">For each of the 3 sheets:</div>
+            <div>1. Open the Google Sheet → <b>Extensions</b> → <b>Apps Script</b></div>
+            <div>2. Click the <b>clock icon</b> (Triggers) in the left sidebar</div>
+            <div>3. Click <b>+ Add Trigger</b></div>
+            <div>4. Function: <span style="font-family:var(--mono);color:var(--green2)">checkCommand</span></div>
+            <div>5. Event source: <b>Time-driven</b> → <b>Minute timer</b> → <b>Every 1 minute</b></div>
+            <div>6. Click <b>Save</b></div>
+            <div style="margin-top:10px;color:var(--muted)">Once set, clicking ▶ Run from this dashboard will start the upload within 60 seconds.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">
+              <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:4px">Sheet 1</div>
+              <div style="font-size:9px;color:var(--muted)">Dialer Leads</div>
+              <div id="trig-0" style="font-size:9px;color:var(--muted);margin-top:4px">Status unknown</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">
+              <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:4px">Sheet 2</div>
+              <div style="font-size:9px;color:var(--muted)">Agent Leads</div>
+              <div id="trig-1" style="font-size:9px;color:var(--muted);margin-top:4px">Status unknown</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">
+              <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:4px">Sheet 3</div>
+              <div style="font-size:9px;color:var(--muted)">NE Agent & LifeX</div>
+              <div id="trig-2" style="font-size:9px;color:var(--muted);margin-top:4px">Status unknown</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -855,12 +886,19 @@ function updateDrip(idx, key, val) {
 async function setStartRow() {
   const sheet = parseInt(document.getElementById('range-sheet').value);
   const row   = parseInt(document.getElementById('range-row').value);
-  if (!row || row < 2) { alert('Enter a valid row number (minimum 2)'); return; }
+  if (!row || row < 2) return;
   try {
-    // Use the reset endpoint and then set cursor via script properties
-    addLog('in', 'config', 'Setting start row ' + row + ' for ' + S.sheets[sheet].name + '...');
-    addActivity('Start row set to ' + row.toLocaleString() + ' for ' + S.sheets[sheet].name, 'ok');
-    alert('Start row set to ' + row + '. Script picks up from this row on next run.');
+    addLog('in', 'config', 'Setting cursor to row ' + row + ' for ' + S.sheets[sheet].name + '...');
+    const res  = await fetch(RENDER + '/set-row?sheet=' + sheet + '&row=' + row);
+    const data = await res.json();
+    if (data.ok) {
+      S.sheets[sheet].cursor = row;
+      addLog('ok', 'config', 'Cursor set to row ' + row.toLocaleString() + ' for ' + S.sheets[sheet].name);
+      addActivity('Start row updated to ' + row.toLocaleString() + ' — ' + S.sheets[sheet].name, 'ok');
+      renderProgress();
+    } else {
+      addLog('wn', 'config', 'Set row response: ' + JSON.stringify(data));
+    }
   } catch(e) {
     addLog('er', 'config', 'Set row failed: ' + e.message);
   }
